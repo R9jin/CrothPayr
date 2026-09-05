@@ -3,27 +3,62 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody))]
 public class Bullet : MonoBehaviour
 {
-    private Color bulletColor = Color.white;
-    private float speed = 40f;
+    [SerializeField] private float damage = 35f;
+    private float speed = 50f;
+    private bool hasHit = false;
 
     public void Init(Color color, float bulletSpeed)
     {
-        bulletColor = color;
         speed = bulletSpeed;
 
-        Renderer rend = GetComponentInChildren<Renderer>();
-        if (rend != null)
-            rend.material.color = bulletColor;
-
         Rigidbody rb = GetComponent<Rigidbody>();
-        rb.linearVelocity = transform.forward * speed; 
+        if (rb != null)
+        {
+            rb.linearVelocity = transform.forward * speed;
+        }
+
+        // Destroy after 4 seconds if no collision
+        Destroy(gameObject, 4f);
     }
 
     private void OnCollisionEnter(Collision collision)
     {
-        ColorTarget target = collision.gameObject.GetComponent<ColorTarget>();
-        if (target != null)
-            target.SetColor(bulletColor);
+        ProcessHit(collision.gameObject);
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        ProcessHit(other.gameObject);
+    }
+
+    private void ProcessHit(GameObject hitObj)
+    {
+        if (hasHit || hitObj == null) return;
+
+        // Ignore hits on Player or any player child/parent
+        if (hitObj.CompareTag("Player") || hitObj.name.Contains("Player") || (hitObj.transform.root != null && hitObj.transform.root.name.Contains("Player")))
+        {
+            return;
+        }
+
+        // Ignore pickups (ammo pickup, etc.)
+        if (hitObj.GetComponent<AmmoPickup>() != null || hitObj.GetComponentInParent<AmmoPickup>() != null)
+        {
+            return;
+        }
+
+        hasHit = true;
+
+        TrainingDummy dummy = hitObj.GetComponentInParent<TrainingDummy>();
+        if (dummy == null)
+        {
+            dummy = hitObj.GetComponent<TrainingDummy>();
+        }
+
+        if (dummy != null)
+        {
+            dummy.TakeDamage(damage);
+        }
 
         Destroy(gameObject);
     }

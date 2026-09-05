@@ -23,12 +23,14 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private Animator playerAnimator;
 
     private CharacterController controller;
+    private PlayerSkillController skillController;
     private Vector3 velocity;
     private float verticalLookRotation;
 
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
+        skillController = GetComponent<PlayerSkillController>();
 
         // Auto-find the Animator on a child model if not manually assigned
         if (playerAnimator == null)
@@ -103,8 +105,17 @@ public class PlayerMovement : MonoBehaviour
         if (playerAnimator != null)
             playerAnimator.SetFloat("Speed", animSpeed, 0.1f, Time.deltaTime);
 
-        if (Input.GetButtonDown("Jump") && isGrounded)
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+        if (Input.GetButtonDown("Jump"))
+        {
+            if (isGrounded)
+            {
+                velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            }
+            else if (skillController != null && skillController.TryDoubleJump())
+            {
+                velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            }
+        }
 
         velocity.y += gravity * Time.deltaTime;
         controller.Move(velocity * Time.deltaTime);

@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 779f8d83cfb547948b974fdf79192ed2, type: 3}
+  m_Name: Level1Data
+  m_EditorClassIdentifier: Assembly-CSharp::LevelData
+  levelName: Level 1 - Room 1 (Armory)
+  requiredDummies: 5
+  timerDuration: 90
+  startingAmmo: 30
+  maxAmmo: 30
+  nextSceneName: Level2
+  roomBoundsMin: {x: -11, y: -11}
+  roomBoundsMax: {x: 11, y: 11}
