@@ -17,6 +17,19 @@ public class Bullet : MonoBehaviour
             rb.linearVelocity = transform.forward * speed;
         }
 
+        // Apply orange emissive color to the bullet mesh via MaterialPropertyBlock
+        // (does not mutate the shared material asset).
+        MeshRenderer meshRenderer = GetComponentInChildren<MeshRenderer>();
+        if (meshRenderer != null)
+        {
+            MaterialPropertyBlock mpb = new MaterialPropertyBlock();
+            meshRenderer.GetPropertyBlock(mpb);
+            mpb.SetColor("_BaseColor", color);
+            // HDR emission: multiply color brightness well above 1 so Bloom picks it up.
+            mpb.SetColor("_EmissionColor", color * 8f);
+            meshRenderer.SetPropertyBlock(mpb);
+        }
+
         // Destroy after 4 seconds if no collision
         Destroy(gameObject, 4f);
     }

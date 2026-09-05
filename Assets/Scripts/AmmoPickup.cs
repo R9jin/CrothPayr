@@ -36,10 +36,17 @@ public class AmmoPickup : MonoBehaviour
         if (other.CompareTag("Player") || other.GetComponent<PlayerMovement>() != null || other.GetComponentInParent<PlayerMovement>() != null)
         {
             isCollected = true;
+
             if (GameManager.Instance != null)
             {
                 GameManager.Instance.CollectAmmo(ammoAmount);
             }
+
+            // Play the reload sound from the player's own AudioSource (diegetic)
+            PlayerShooting shooting = other.GetComponent<PlayerShooting>();
+            if (shooting == null) shooting = other.GetComponentInParent<PlayerShooting>();
+            if (shooting != null) shooting.PlayReloadSound();
+
             Destroy(gameObject);
         }
     }

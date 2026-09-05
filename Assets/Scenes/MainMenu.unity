@@ -932,7 +932,7 @@ MonoBehaviour:
   m_ScaleFactor: 1
   m_ReferenceResolution: {x: 1920, y: 1080}
   m_ScreenMatchMode: 0
-  m_MatchWidthOrHeight: 0
+  m_MatchWidthOrHeight: 0.5
   m_PhysicalUnit: 3
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
@@ -3302,6 +3302,9 @@ MonoBehaviour:
   gameSceneName: Level1
   characterSelectPanel: {fileID: 758101692}
   mainButtonsPanel: {fileID: 1948064845}
+  themeSongClip: {fileID: 8300000, guid: 078ef9c89d88633498f6d5a181c2f30d, type: 3}
+  musicAudioSource: {fileID: 0}
+  musicVolume: 0.5
 --- !u!1 &1742329543
 GameObject:
   m_ObjectHideFlags: 0
@@ -4501,15 +4504,15 @@ RectTransform:
   m_GameObject: {fileID: 2081193686}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 19.147577, y: 8.348437, z: 5.317815}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 601386324}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2081193688
 MonoBehaviour:

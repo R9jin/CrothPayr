@@ -8,6 +8,14 @@ public class PlayerShooting : MonoBehaviour
     [SerializeField] private Transform firePoint;
     [SerializeField] private GameObject bulletPrefab;
 
+    [Header("Audio")]
+    [SerializeField] private AudioClip gunshotClip;
+    [SerializeField] private AudioSource gunshotAudioSource;
+    [SerializeField] [Range(0f, 1f)] private float gunshotVolume = 1f;
+    [SerializeField] private AudioClip reloadClip;
+    [SerializeField] private AudioSource reloadAudioSource;
+    [SerializeField] [Range(0f, 1f)] private float reloadVolume = 0.85f;
+
     [Header("Zoom")]
     [SerializeField] private float normalFOV = 60f;
     [SerializeField] private float zoomFOV = 30f;
@@ -45,6 +53,35 @@ public class PlayerShooting : MonoBehaviour
         {
             bulletPrefab = Resources.Load<GameObject>("GameplayBullet");
         }
+
+        // --- Diegetic gunshot audio setup ---
+        // If no AudioSource was assigned, add one to this GameObject automatically.
+        if (gunshotAudioSource == null)
+        {
+            gunshotAudioSource = GetComponent<AudioSource>();
+            if (gunshotAudioSource == null)
+                gunshotAudioSource = gameObject.AddComponent<AudioSource>();
+        }
+
+        // Configure for diegetic (world-space / 3D) playback.
+        gunshotAudioSource.clip = gunshotClip;
+        gunshotAudioSource.playOnAwake = false;
+        gunshotAudioSource.spatialBlend = 1f;          // 1 = full 3D; attenuates with distance
+        gunshotAudioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+        gunshotAudioSource.minDistance = 1f;
+        gunshotAudioSource.maxDistance = 40f;
+        gunshotAudioSource.volume = gunshotVolume;
+
+        // --- Diegetic reload audio setup ---
+        if (reloadAudioSource == null)
+            reloadAudioSource = gameObject.AddComponent<AudioSource>();
+        reloadAudioSource.clip        = reloadClip;
+        reloadAudioSource.playOnAwake = false;
+        reloadAudioSource.spatialBlend = 1f;
+        reloadAudioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+        reloadAudioSource.minDistance = 1f;
+        reloadAudioSource.maxDistance = 30f;
+        reloadAudioSource.volume      = reloadVolume;
     }
 
     private void Update()
@@ -138,7 +175,24 @@ public class PlayerShooting : MonoBehaviour
         Bullet bullet = bulletObj.GetComponent<Bullet>();
         if (bullet != null)
         {
-            bullet.Init(Color.yellow, bulletSpeed);
+            bullet.Init(new Color(1f, 0.45f, 0.05f), bulletSpeed);
         }
+
+        // Play the diegetic gunshot sound from the player's world position.
+        // PlayOneShot lets overlapping shots stack correctly during rapid fire.
+        if (gunshotAudioSource != null && gunshotClip != null)
+        {
+            gunshotAudioSource.PlayOneShot(gunshotClip, gunshotVolume);
+        }
+    }
+
+    /// <summary>
+    /// Called by AmmoPickup when the player collects ammo.
+    /// Plays the reload sound diegetically from the player's world position.
+    /// </summary>
+    public void PlayReloadSound()
+    {
+        if (reloadAudioSource != null && reloadClip != null)
+            reloadAudioSource.PlayOneShot(reloadClip, reloadVolume);
     }
 }

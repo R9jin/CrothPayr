@@ -8730,6 +8730,12 @@ MonoBehaviour:
   playerCamera: {fileID: 2026552220}
   firePoint: {fileID: 1354805266}
   bulletPrefab: {fileID: 2315194344371526118, guid: 562211da505476d48945c348b4e606bd, type: 3}
+  gunshotClip: {fileID: 8300000, guid: 92c628a873d2df74da407238523867aa, type: 3}
+  gunshotAudioSource: {fileID: 0}
+  gunshotVolume: 1
+  reloadClip: {fileID: 8300000, guid: f3f7420aed4788e448705b061a659587, type: 3}
+  reloadAudioSource: {fileID: 0}
+  reloadVolume: 0.85
   normalFOV: 60
   zoomFOV: 30
   zoomSpeed: 10
@@ -8756,6 +8762,11 @@ MonoBehaviour:
   lookUpLimit: 80
   mainMenuSceneName: MainMenu
   playerAnimator: {fileID: 1924960972}
+  footstepClip: {fileID: 8300000, guid: 551b00ecf8f0899409f0ae77be850390, type: 3}
+  footstepAudioSource: {fileID: 0}
+  footstepVolume: 0.7
+  walkPitch: 1
+  runPitch: 1.35
 --- !u!143 &1611380733
 CharacterController:
   m_ObjectHideFlags: 0

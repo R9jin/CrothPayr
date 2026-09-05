@@ -22,6 +22,13 @@ public class PlayerMovement : MonoBehaviour
     [Header("Animation")]
     [SerializeField] private Animator playerAnimator;
 
+    [Header("Footstep Audio")]
+    [SerializeField] private AudioClip footstepClip;
+    [SerializeField] private AudioSource footstepAudioSource;
+    [SerializeField] [Range(0f, 1f)] private float footstepVolume = 0.7f;
+    [SerializeField] private float walkPitch = 1f;    // pitch while walking
+    [SerializeField] private float runPitch  = 1.35f; // pitch while sprinting
+
     private CharacterController controller;
     private PlayerSkillController skillController;
     private Vector3 velocity;
@@ -41,6 +48,22 @@ public class PlayerMovement : MonoBehaviour
     {
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+
+        // --- Diegetic footstep audio setup ---
+        // Use a looping AudioSource so the long walking track plays seamlessly.
+        // No timer/PlayOneShot — just Play() when moving, Stop() when idle/airborne.
+        if (footstepAudioSource == null)
+            footstepAudioSource = gameObject.AddComponent<AudioSource>();
+
+        footstepAudioSource.clip         = footstepClip;
+        footstepAudioSource.playOnAwake  = false;
+        footstepAudioSource.loop         = true;          // ← key: loop the track
+        footstepAudioSource.spatialBlend = 1f;            // full 3D / diegetic
+        footstepAudioSource.rolloffMode  = AudioRolloffMode.Logarithmic;
+        footstepAudioSource.minDistance  = 1f;
+        footstepAudioSource.maxDistance  = 20f;
+        footstepAudioSource.volume       = footstepVolume;
+        footstepAudioSource.pitch        = walkPitch;
     }
 
     private void Update()
@@ -50,6 +73,7 @@ public class PlayerMovement : MonoBehaviour
 
         HandleLook();
         HandleMove();
+        HandleFootsteps();
         HandleReturnToMenu();
     }
 
@@ -123,5 +147,31 @@ public class PlayerMovement : MonoBehaviour
         // Drive jump animation
         if (playerAnimator != null)
             playerAnimator.SetBool("IsJumping", !isGrounded);
+    }
+
+    private void HandleFootsteps()
+    {
+        if (footstepAudioSource == null || footstepClip == null) return;
+
+        bool isGrounded  = controller.isGrounded;
+        float horizontal = Input.GetAxis("Horizontal");
+        float vertical   = Input.GetAxis("Vertical");
+        float inputMag   = Mathf.Abs(horizontal) + Mathf.Abs(vertical);
+        bool isSprinting = Input.GetKey(KeyCode.LeftShift);
+        bool shouldPlay  = isGrounded && inputMag > 0.1f;
+
+        if (shouldPlay)
+        {
+            // Shift pitch to match walk vs sprint cadence — no overlapping copies
+            footstepAudioSource.pitch = isSprinting ? runPitch : walkPitch;
+
+            if (!footstepAudioSource.isPlaying)
+                footstepAudioSource.Play();
+        }
+        else
+        {
+            if (footstepAudioSource.isPlaying)
+                footstepAudioSource.Stop();
+        }
     }
 }
