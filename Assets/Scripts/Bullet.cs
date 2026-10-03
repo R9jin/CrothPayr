@@ -61,6 +61,7 @@ public class Bullet : MonoBehaviour
         }
 
         hasHit = true;
+        NoiseSystem.Emit(transform.position, 12f, gameObject);
 
         TrainingDummy dummy = hitObj.GetComponentInParent<TrainingDummy>();
         if (dummy == null)

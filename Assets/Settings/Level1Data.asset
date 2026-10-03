@@ -18,5 +18,5 @@ MonoBehaviour:
   startingAmmo: 30
   maxAmmo: 30
   nextSceneName: Level2
-  roomBoundsMin: {x: -11, y: -11}
-  roomBoundsMax: {x: 11, y: 11}
+  roomBoundsMin: {x: -14, y: -14}
+  roomBoundsMax: {x: 14, y: 14}

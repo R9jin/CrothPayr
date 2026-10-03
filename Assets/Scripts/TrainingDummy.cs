@@ -6,22 +6,23 @@ using TMPro;
 public class TrainingDummy : MonoBehaviour
 {
     [Header("Health Settings")]
-    [SerializeField] private float maxHealth = 100f;
-    [SerializeField] private float heightOffset = 2.4f;
+    [SerializeField] protected float maxHealth = 100f;
+    [SerializeField] protected float heightOffset = 2.4f;
 
-    private float currentHealth;
-    private Canvas healthCanvas;
-    private Slider healthSlider;
-    private Image fillImage;
-    private Image bgImage;
-    private Renderer[] renderers;
-    private Color[] originalColors;
-    private bool isDead = false;
+    protected float currentHealth;
+    protected Canvas healthCanvas;
+    protected Slider healthSlider;
+    protected Image fillImage;
+    protected Image bgImage;
+    protected TextMeshProUGUI titleLabel;
+    protected Renderer[] renderers;
+    protected Color[] originalColors;
+    protected bool isDead = false;
 
     private static Sprite s_bgSprite;
     private static Sprite s_fillSprite;
 
-    private void Awake()
+    protected virtual void Awake()
     {
         currentHealth = maxHealth;
         renderers = GetComponentsInChildren<Renderer>();
@@ -140,12 +141,12 @@ public class TrainingDummy : MonoBehaviour
         // ---- Label Above Slider ----
         GameObject textGO = new GameObject("Label", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
         textGO.transform.SetParent(canvasGO.transform, false);
-        TextMeshProUGUI lbl = textGO.GetComponent<TextMeshProUGUI>();
-        lbl.text = "TRAINING DUMMY";
-        lbl.fontSize = 0.19f;
-        lbl.fontStyle = FontStyles.Bold;
-        lbl.alignment = TextAlignmentOptions.Center;
-        lbl.color = Color.white;
+        titleLabel = textGO.GetComponent<TextMeshProUGUI>();
+        titleLabel.text = "TRAINING DUMMY";
+        titleLabel.fontSize = 0.19f;
+        titleLabel.fontStyle = FontStyles.Bold;
+        titleLabel.alignment = TextAlignmentOptions.Center;
+        titleLabel.color = Color.white;
         RectTransform tRect = textGO.GetComponent<RectTransform>();
         tRect.anchorMin = new Vector2(0f, 0.65f);
         tRect.anchorMax = new Vector2(1f, 1f);
@@ -153,7 +154,24 @@ public class TrainingDummy : MonoBehaviour
         tRect.offsetMax = Vector2.zero;
     }
 
-    private void LateUpdate()
+    public virtual void SetTitle(string text, Color textColor)
+    {
+        if (titleLabel != null)
+        {
+            titleLabel.text = text;
+            titleLabel.color = textColor;
+        }
+    }
+
+    public virtual void SetFillColor(Color color)
+    {
+        if (fillImage != null)
+        {
+            fillImage.color = color;
+        }
+    }
+
+    protected virtual void LateUpdate()
     {
         if (healthCanvas != null)
         {
@@ -208,7 +226,7 @@ public class TrainingDummy : MonoBehaviour
         }
     }
 
-    private void Die()
+    protected virtual void Die()
     {
         isDead = true;
         if (GameManager.Instance != null)

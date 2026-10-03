@@ -69,7 +69,7 @@ public static class CharacterSelection
         switch (type)
         {
             case CharacterType.CharacterA_Roll:
-                return "Rapid evasive roll in movement direction.\nHas 2 charges with recharge cooldown.\n[Key: Q or Left Ctrl]";
+                return "Rapid evasive roll in movement direction.\nHas 2 charges with recharge cooldown.\n[Key: Q]";
             case CharacterType.CharacterB_DoubleJump:
                 return "Allows a second vertical leap while in mid-air.\nNo cooldown.\n[Key: Space in air]";
             case CharacterType.CharacterC_Teleport:

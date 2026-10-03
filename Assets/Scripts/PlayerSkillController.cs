@@ -107,7 +107,7 @@ public class PlayerSkillController : MonoBehaviour
         switch (activeCharacter)
         {
             case CharacterType.CharacterA_Roll:
-                if ((Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(KeyCode.LeftControl)) && currentRollCharges > 0 && !isRolling)
+                if (Input.GetKeyDown(KeyCode.Q) && currentRollCharges > 0 && !isRolling)
                 {
                     ExecuteRoll();
                 }
@@ -210,11 +210,11 @@ public class PlayerSkillController : MonoBehaviour
                 if (currentRollCharges < maxRollCharges)
                 {
                     float remaining = Mathf.Max(0f, rollRechargeTime - rollRechargeTimer);
-                    status = $"Charges: {currentRollCharges}/{maxRollCharges} (Recharge: {remaining:0.0}s) [Q/Ctrl]";
+                    status = $"Charges: {currentRollCharges}/{maxRollCharges} (Recharge: {remaining:0.0}s) [Q]";
                 }
                 else
                 {
-                    status = $"Charges: {currentRollCharges}/{maxRollCharges} [Q/Ctrl]";
+                    status = $"Charges: {currentRollCharges}/{maxRollCharges} [Q]";
                 }
                 break;
 

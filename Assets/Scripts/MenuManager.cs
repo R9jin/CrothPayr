@@ -3,6 +3,8 @@ using UnityEngine.SceneManagement;
 
 public class MenuManager : MonoBehaviour
 {
+    public static MenuManager Instance { get; private set; }
+
     [Tooltip("Must exactly match the scene name in File > Build Settings")]
     [SerializeField] private string gameSceneName = "Level1";
 
@@ -14,6 +16,21 @@ public class MenuManager : MonoBehaviour
     [SerializeField] private AudioClip themeSongClip;
     [SerializeField] private AudioSource musicAudioSource;
     [SerializeField] [Range(0f, 1f)] private float musicVolume = 0.5f;
+
+    [Header("Level / Stage Progression")]
+    [SerializeField] private int selectedStage = 1;
+
+    public int SelectedStage => selectedStage;
+    public string GameSceneName => gameSceneName;
+
+    private void Awake()
+    {
+        Instance = this;
+
+        // Restore last selected stage or default to Stage 1
+        selectedStage = PlayerPrefs.GetInt("SelectedStage", 1);
+        SetSelectedStage(selectedStage);
+    }
 
     private void Start()
     {
@@ -50,6 +67,14 @@ public class MenuManager : MonoBehaviour
         }
     }
 
+    public void SetSelectedStage(int stageNumber)
+    {
+        selectedStage = Mathf.Clamp(stageNumber, 1, 3);
+        gameSceneName = "Level" + selectedStage;
+        PlayerPrefs.SetInt("SelectedStage", selectedStage);
+        PlayerPrefs.Save();
+    }
+
     // Wired to the START button's OnClick()
     public void PlayGame()
     {
@@ -82,10 +107,12 @@ public class MenuManager : MonoBehaviour
 
     public void ConfirmAndStartGame()
     {
+        // Ensure scene name is up to date with selected stage
+        gameSceneName = "Level" + selectedStage;
+        Time.timeScale = 1f;
         SceneManager.LoadScene(gameSceneName);
     }
 
-    // Not wired yet - placeholder for when you build the settings panel
     public void OpenSettings()
     {
         Debug.Log("Settings not implemented yet.");

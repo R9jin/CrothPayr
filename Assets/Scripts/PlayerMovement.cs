@@ -10,6 +10,15 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float gravity = -9.81f;
     [SerializeField] private float jumpHeight = 1.2f;
 
+    [Header("Crouch Settings")]
+    [SerializeField] private KeyCode crouchKey = KeyCode.C;
+    [SerializeField] private KeyCode crouchKeyAlt = KeyCode.LeftControl;
+    [SerializeField] private float crouchHeight = 1.1f;
+    [SerializeField] private float normalHeight = 2.0f;
+    [SerializeField] private float crouchCenterY = -0.45f;
+    [SerializeField] private float normalCenterY = 0f;
+    [SerializeField] private float crouchTransitionSpeed = 12f;
+
     [Header("Look")]
     [SerializeField] private Transform cameraTransform;
     [SerializeField] private float mouseSensitivity = 2f;
@@ -31,17 +40,47 @@ public class PlayerMovement : MonoBehaviour
 
     private CharacterController controller;
     private PlayerSkillController skillController;
+    private PlayerHealth playerHealth;
     private Vector3 velocity;
     private float verticalLookRotation;
+
+    private bool isCrouching = false;
+    private float defaultCameraY = 0.8f;
+    private float nextNoiseTime = 0f;
+
+    public bool IsCrouching => isCrouching;
 
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
         skillController = GetComponent<PlayerSkillController>();
+        playerHealth = GetComponent<PlayerHealth>();
+        if (playerHealth == null) playerHealth = gameObject.AddComponent<PlayerHealth>();
+
+        // Ensure tag is Player
+        if (!gameObject.CompareTag("Player"))
+        {
+            try
+            {
+                gameObject.tag = "Player";
+            }
+            catch { }
+        }
 
         // Auto-find the Animator on a child model if not manually assigned
         if (playerAnimator == null)
             playerAnimator = GetComponentInChildren<Animator>();
+
+        if (cameraTransform == null)
+        {
+            Camera cam = GetComponentInChildren<Camera>();
+            if (cam != null) cameraTransform = cam.transform;
+        }
+
+        if (cameraTransform != null)
+        {
+            defaultCameraY = cameraTransform.localPosition.y;
+        }
     }
 
     private void Start()
@@ -50,15 +89,13 @@ public class PlayerMovement : MonoBehaviour
         Cursor.visible = false;
 
         // --- Diegetic footstep audio setup ---
-        // Use a looping AudioSource so the long walking track plays seamlessly.
-        // No timer/PlayOneShot — just Play() when moving, Stop() when idle/airborne.
         if (footstepAudioSource == null)
             footstepAudioSource = gameObject.AddComponent<AudioSource>();
 
         footstepAudioSource.clip         = footstepClip;
         footstepAudioSource.playOnAwake  = false;
-        footstepAudioSource.loop         = true;          // ← key: loop the track
-        footstepAudioSource.spatialBlend = 1f;            // full 3D / diegetic
+        footstepAudioSource.loop         = true;
+        footstepAudioSource.spatialBlend = 1f;
         footstepAudioSource.rolloffMode  = AudioRolloffMode.Logarithmic;
         footstepAudioSource.minDistance  = 1f;
         footstepAudioSource.maxDistance  = 20f;
@@ -68,13 +105,40 @@ public class PlayerMovement : MonoBehaviour
 
     private void Update()
     {
-        // Don't move/look while the game is paused
+        // Don't move/look while the game is paused or dead
         if (Time.timeScale == 0f) return;
+        if (playerHealth != null && playerHealth.IsDead) return;
 
+        HandleCrouchInput();
         HandleLook();
         HandleMove();
-        HandleFootsteps();
+        HandleFootstepsAndNoise();
         HandleReturnToMenu();
+    }
+
+    private void HandleCrouchInput()
+    {
+        // Player can crouch with C or LeftControl
+        bool crouchHeld = Input.GetKey(crouchKey) || Input.GetKey(crouchKeyAlt);
+        isCrouching = crouchHeld;
+
+        // Smooth transition of CharacterController height and center
+        float targetHeight = isCrouching ? crouchHeight : normalHeight;
+        float targetCenterY = isCrouching ? crouchCenterY : normalCenterY;
+
+        controller.height = Mathf.Lerp(controller.height, targetHeight, Time.deltaTime * crouchTransitionSpeed);
+        Vector3 curCenter = controller.center;
+        curCenter.y = Mathf.Lerp(curCenter.y, targetCenterY, Time.deltaTime * crouchTransitionSpeed);
+        controller.center = curCenter;
+
+        // Smooth transition of Camera local Y
+        if (cameraTransform != null)
+        {
+            Vector3 camLocalPos = cameraTransform.localPosition;
+            float targetCamY = isCrouching ? defaultCameraY * 0.5f : defaultCameraY;
+            camLocalPos.y = Mathf.Lerp(camLocalPos.y, targetCamY, Time.deltaTime * crouchTransitionSpeed);
+            cameraTransform.localPosition = camLocalPos;
+        }
     }
 
     private void HandleReturnToMenu()
@@ -87,7 +151,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void ReturnToMainMenu()
     {
-        Time.timeScale = 1f; // reset in case something paused it before quitting
+        Time.timeScale = 1f;
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
         SceneManager.LoadScene(mainMenuSceneName);
@@ -101,7 +165,7 @@ public class PlayerMovement : MonoBehaviour
         // Rotate the whole player left/right
         transform.Rotate(Vector3.up * mouseX);
 
-        // Rotate only the camera up/down, clamped so you can't flip over
+        // Rotate only the camera up/down
         verticalLookRotation -= mouseY;
         verticalLookRotation = Mathf.Clamp(verticalLookRotation, -lookUpLimit, lookUpLimit);
         if (cameraTransform != null)
@@ -118,18 +182,31 @@ public class PlayerMovement : MonoBehaviour
         float vertical   = Input.GetAxis("Vertical");   // W/S
         Vector3 move = transform.right * horizontal + transform.forward * vertical;
 
-        // Hold Left Shift to run
-        bool isSprinting = Input.GetKey(KeyCode.LeftShift);
-        float currentSpeed = isSprinting ? runSpeed : moveSpeed;
+        // Speed calculation:
+        // "Player can now crouch but halves the move speed while removing the sound it makes while moving."
+        float currentSpeed;
+        if (isCrouching)
+        {
+            currentSpeed = moveSpeed * 0.5f; // Halved move speed
+        }
+        else if (Input.GetKey(KeyCode.LeftShift))
+        {
+            currentSpeed = runSpeed;
+        }
+        else
+        {
+            currentSpeed = moveSpeed;
+        }
+
         controller.Move(move * currentSpeed * Time.deltaTime);
 
-        // Drive animation Speed (0 = idle, ~0.5 = walk, ~1 = run)
+        // Drive animation Speed
         float inputMagnitude = Mathf.Clamp01(move.magnitude);
-        float animSpeed      = isSprinting ? inputMagnitude : inputMagnitude * 0.5f;
+        float animSpeed = isCrouching ? inputMagnitude * 0.3f : (Input.GetKey(KeyCode.LeftShift) ? inputMagnitude : inputMagnitude * 0.5f);
         if (playerAnimator != null)
             playerAnimator.SetFloat("Speed", animSpeed, 0.1f, Time.deltaTime);
 
-        if (Input.GetButtonDown("Jump"))
+        if (Input.GetButtonDown("Jump") && !isCrouching)
         {
             if (isGrounded)
             {
@@ -149,29 +226,43 @@ public class PlayerMovement : MonoBehaviour
             playerAnimator.SetBool("IsJumping", !isGrounded);
     }
 
-    private void HandleFootsteps()
+    private void HandleFootstepsAndNoise()
     {
-        if (footstepAudioSource == null || footstepClip == null) return;
-
         bool isGrounded  = controller.isGrounded;
         float horizontal = Input.GetAxis("Horizontal");
         float vertical   = Input.GetAxis("Vertical");
         float inputMag   = Mathf.Abs(horizontal) + Mathf.Abs(vertical);
-        bool isSprinting = Input.GetKey(KeyCode.LeftShift);
-        bool shouldPlay  = isGrounded && inputMag > 0.1f;
+        bool isSprinting = Input.GetKey(KeyCode.LeftShift) && !isCrouching;
 
-        if (shouldPlay)
+        // "Player can now crouch but halves the move speed while removing the sound it makes while moving."
+        bool isMoving = isGrounded && inputMag > 0.1f;
+        bool shouldPlayAudio = isMoving && !isCrouching;
+
+        if (footstepAudioSource != null && footstepClip != null)
         {
-            // Shift pitch to match walk vs sprint cadence — no overlapping copies
-            footstepAudioSource.pitch = isSprinting ? runPitch : walkPitch;
-
-            if (!footstepAudioSource.isPlaying)
-                footstepAudioSource.Play();
+            if (shouldPlayAudio)
+            {
+                footstepAudioSource.pitch = isSprinting ? runPitch : walkPitch;
+                if (!footstepAudioSource.isPlaying)
+                    footstepAudioSource.Play();
+            }
+            else
+            {
+                if (footstepAudioSource.isPlaying)
+                    footstepAudioSource.Stop();
+            }
         }
-        else
+
+        // Noise emission:
+        // Crouching: 0 noise (completely silent to Proximity AI!).
+        // Walking: 8m audible noise.
+        // Sprinting: 14m audible noise.
+        if (isMoving && !isCrouching && Time.time >= nextNoiseTime)
         {
-            if (footstepAudioSource.isPlaying)
-                footstepAudioSource.Stop();
+            float noiseRadius = isSprinting ? 14f : 8f;
+            float interval = isSprinting ? 0.3f : 0.45f;
+            nextNoiseTime = Time.time + interval;
+            NoiseSystem.Emit(transform.position, noiseRadius, gameObject);
         }
     }
 }

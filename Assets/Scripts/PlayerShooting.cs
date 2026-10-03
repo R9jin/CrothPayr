@@ -184,6 +184,9 @@ public class PlayerShooting : MonoBehaviour
         {
             gunshotAudioSource.PlayOneShot(gunshotClip, gunshotVolume);
         }
+
+        // Gunshots emit loud sound that alerts Proximity AI
+        NoiseSystem.Emit(transform.position, 30f, gameObject);
     }
 
     /// <summary>

@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 779f8d83cfb547948b974fdf79192ed2, type: 3}
   m_Name: Level3Data
   m_EditorClassIdentifier: Assembly-CSharp::LevelData
-  levelName: Level 3 - Room 3 (Tech Vault)
-  requiredDummies: 12
+  levelName: Level 3 - Room 3 (Tech Vault - Final Stage)
+  requiredDummies: 10
   timerDuration: 120
   startingAmmo: 30
   maxAmmo: 30
-  nextSceneName: Level4
-  roomBoundsMin: {x: -20, y: -20}
-  roomBoundsMax: {x: 20, y: 20}
+  nextSceneName: MainMenu
+  roomBoundsMin: {x: -24, y: -24}
+  roomBoundsMax: {x: 24, y: 24}

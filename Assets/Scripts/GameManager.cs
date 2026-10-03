@@ -103,17 +103,28 @@ public class GameManager : MonoBehaviour
         GameObject player = GameObject.Find("Player");
         if (player == null) return;
 
-        Vector2 bMin = levelData != null ? levelData.roomBoundsMin : new Vector2(-10f, -10f);
-        Vector2 bMax = levelData != null ? levelData.roomBoundsMax : new Vector2(10f, 10f);
-
-        // Keep player safe from wall collisions (inside 55% of room bounds)
-        float rx = Random.Range(bMin.x * 0.55f, bMax.x * 0.55f);
-        float rz = Random.Range(bMin.y * 0.55f, bMax.y * 0.55f);
-
         CharacterController cc = player.GetComponent<CharacterController>();
         if (cc != null) cc.enabled = false;
-        player.transform.position = new Vector3(rx, 1.1f, rz);
-        player.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+
+        // Check if level has a dedicated tactical PlayerSpawn point
+        GameObject playerSpawn = GameObject.Find("PlayerSpawn");
+        if (playerSpawn != null)
+        {
+            player.transform.position = playerSpawn.transform.position;
+            player.transform.rotation = playerSpawn.transform.rotation;
+        }
+        else
+        {
+            Vector2 bMin = levelData != null ? levelData.roomBoundsMin : new Vector2(-10f, -10f);
+            Vector2 bMax = levelData != null ? levelData.roomBoundsMax : new Vector2(10f, 10f);
+
+            // Fallback: spawn inside safe area
+            float rx = Random.Range(bMin.x * 0.55f, bMax.x * 0.55f);
+            float rz = Random.Range(bMin.y * 0.55f, bMax.y * 0.55f);
+            player.transform.position = new Vector3(rx, 1.1f, rz);
+            player.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+        }
+
         Physics.SyncTransforms();
         if (cc != null) cc.enabled = true;
     }
@@ -194,13 +205,31 @@ public class GameManager : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
+        // Save stage progression
+        string curScene = SceneManager.GetActiveScene().name;
+        if (curScene.Contains("1"))
+        {
+            PlayerPrefs.SetInt("HighestStageUnlocked", Mathf.Max(PlayerPrefs.GetInt("HighestStageUnlocked", 1), 2));
+            PlayerPrefs.SetInt("SelectedStage", 2);
+        }
+        else if (curScene.Contains("2"))
+        {
+            PlayerPrefs.SetInt("HighestStageUnlocked", Mathf.Max(PlayerPrefs.GetInt("HighestStageUnlocked", 1), 3));
+            PlayerPrefs.SetInt("SelectedStage", 3);
+        }
+        else if (curScene.Contains("3"))
+        {
+            PlayerPrefs.SetInt("SelectedStage", 1);
+        }
+        PlayerPrefs.Save();
+
         if (uiManager != null)
         {
             uiManager.ShowVictoryWindow(ammoPickedUp, shotsFired, dummiesKilled);
         }
     }
 
-    private void LoseLevel(string reason)
+    public void LoseLevel(string reason)
     {
         isLevelOver = true;
         Time.timeScale = 0f;
