@@ -4,7 +4,7 @@ using UnityEngine;
 public class AmmoPickup : MonoBehaviour
 {
     [Header("Ammo Settings")]
-    [SerializeField] private int ammoAmount = 5;
+    [SerializeField] private int ammoAmount = 10;
     [SerializeField] private float rotationSpeed = 60f;
     [SerializeField] private float bobSpeed = 2f;
     [SerializeField] private float bobHeight = 0.2f;

@@ -18,6 +18,9 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float crouchCenterY = -0.45f;
     [SerializeField] private float normalCenterY = 0f;
     [SerializeField] private float crouchTransitionSpeed = 12f;
+    [SerializeField] private float crouchCameraYOffset = -0.65f;
+    [SerializeField] private float crouchCameraZOffset = 0.15f;
+    [SerializeField] private Transform bodyTransform;
 
     [Header("Look")]
     [SerializeField] private Transform cameraTransform;
@@ -45,7 +48,9 @@ public class PlayerMovement : MonoBehaviour
     private float verticalLookRotation;
 
     private bool isCrouching = false;
-    private float defaultCameraY = 0.8f;
+    private float defaultCameraY = 0.7f;
+    private float defaultCameraZ = 0.05f;
+    private float defaultBodyY = -1.0f;
     private float nextNoiseTime = 0f;
 
     public bool IsCrouching => isCrouching;
@@ -57,15 +62,20 @@ public class PlayerMovement : MonoBehaviour
         playerHealth = GetComponent<PlayerHealth>();
         if (playerHealth == null) playerHealth = gameObject.AddComponent<PlayerHealth>();
 
-        // Ensure tag is Player
-        if (!gameObject.CompareTag("Player"))
+        // Ensure CharacterController is primary; disable redundant legacy CapsuleCollider so crouching hitbox is 100% accurate
+        CapsuleCollider legacyCol = GetComponent<CapsuleCollider>();
+        if (legacyCol != null) legacyCol.enabled = false;
+
+        // Ensure tag is Player on root and children
+        try
         {
-            try
+            gameObject.tag = "Player";
+            foreach (Transform c in GetComponentsInChildren<Transform>(true))
             {
-                gameObject.tag = "Player";
+                c.gameObject.tag = "Player";
             }
-            catch { }
         }
+        catch { }
 
         // Auto-find the Animator on a child model if not manually assigned
         if (playerAnimator == null)
@@ -80,6 +90,55 @@ public class PlayerMovement : MonoBehaviour
         if (cameraTransform != null)
         {
             defaultCameraY = cameraTransform.localPosition.y;
+            defaultCameraZ = cameraTransform.localPosition.z;
+
+            Camera cam = cameraTransform.GetComponent<Camera>();
+            if (cam != null && cam.nearClipPlane > 0.05f)
+            {
+                cam.nearClipPlane = 0.03f;
+            }
+        }
+
+        if (bodyTransform == null)
+        {
+            Transform t = transform.Find("SK_Military_Survivalist");
+            if (t != null) bodyTransform = t;
+            else if (playerAnimator != null) bodyTransform = playerAnimator.transform;
+        }
+
+        if (bodyTransform != null)
+        {
+            defaultBodyY = bodyTransform.localPosition.y;
+        }
+
+        ConfigureFirstPersonMeshVisibility();
+    }
+
+    /// <summary>
+    /// In first person, head, helmet, cap, vest, collar, backpack, and upper torso must not obstruct camera.
+    /// Setting them to ShadowsOnly ensures realistic player shadows while giving an unobstructed 100% clear view.
+    /// Weapon, hands, and arms remain fully visible.
+    /// </summary>
+    private void ConfigureFirstPersonMeshVisibility()
+    {
+        SkinnedMeshRenderer[] smrs = GetComponentsInChildren<SkinnedMeshRenderer>(true);
+        foreach (var smr in smrs)
+        {
+            string n = smr.name.ToLower();
+            if (n.Contains("head") || n.Contains("cap") || n.Contains("helmet") || n.Contains("vest") || n.Contains("backpack") || n.Contains("shirt") || n.Contains("collar"))
+            {
+                smr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
+            }
+        }
+
+        MeshRenderer[] mrs = GetComponentsInChildren<MeshRenderer>(true);
+        foreach (var mr in mrs)
+        {
+            string n = mr.name.ToLower();
+            if (n.Contains("head") || n.Contains("cap") || n.Contains("helmet") || n.Contains("vest") || n.Contains("backpack") || n.Contains("shirt") || n.Contains("collar"))
+            {
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
+            }
         }
     }
 
@@ -131,13 +190,26 @@ public class PlayerMovement : MonoBehaviour
         curCenter.y = Mathf.Lerp(curCenter.y, targetCenterY, Time.deltaTime * crouchTransitionSpeed);
         controller.center = curCenter;
 
-        // Smooth transition of Camera local Y
+        // Smooth transition of Camera local position
         if (cameraTransform != null)
         {
             Vector3 camLocalPos = cameraTransform.localPosition;
-            float targetCamY = isCrouching ? defaultCameraY * 0.5f : defaultCameraY;
+            float targetCamY = isCrouching ? (defaultCameraY + crouchCameraYOffset) : defaultCameraY;
+            float targetCamZ = isCrouching ? (defaultCameraZ + crouchCameraZOffset) : defaultCameraZ;
+
             camLocalPos.y = Mathf.Lerp(camLocalPos.y, targetCamY, Time.deltaTime * crouchTransitionSpeed);
+            camLocalPos.z = Mathf.Lerp(camLocalPos.z, targetCamZ, Time.deltaTime * crouchTransitionSpeed);
             cameraTransform.localPosition = camLocalPos;
+        }
+
+        // Smooth transition of Player Body model position and scale
+        if (bodyTransform != null)
+        {
+            Vector3 targetBodyScale = isCrouching ? new Vector3(1f, 0.65f, 1f) : Vector3.one;
+            Vector3 targetBodyPos = isCrouching ? new Vector3(0f, defaultBodyY + crouchCenterY * 0.5f, 0f) : new Vector3(0f, defaultBodyY, 0f);
+
+            bodyTransform.localScale = Vector3.Lerp(bodyTransform.localScale, targetBodyScale, Time.deltaTime * crouchTransitionSpeed);
+            bodyTransform.localPosition = Vector3.Lerp(bodyTransform.localPosition, targetBodyPos, Time.deltaTime * crouchTransitionSpeed);
         }
     }
 

@@ -9,7 +9,7 @@ public class PlayerHealth : MonoBehaviour
     [SerializeField] private float maxHealth = 100f;
     [SerializeField] private float invulnerabilityDuration = 0.2f;
 
-    private float currentHealth;
+    private float currentHealth = 100f;
     private bool isDead = false;
     private float lastDamageTime = -10f;
 
@@ -20,7 +20,7 @@ public class PlayerHealth : MonoBehaviour
     private void Awake()
     {
         Instance = this;
-        currentHealth = maxHealth;
+        currentHealth = maxHealth > 0f ? maxHealth : 100f;
         isDead = false;
 
         // Ensure Player has Player tag

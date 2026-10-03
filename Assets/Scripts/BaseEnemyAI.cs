@@ -64,6 +64,28 @@ public abstract class BaseEnemyAI : TrainingDummy
         }
     }
 
+    /// <summary>
+    /// Computes the exact center of mass / chest of the player (adapts dynamically to crouching, jumping, and standing).
+    /// </summary>
+    protected Vector3 GetPlayerAimPosition()
+    {
+        if (playerTransform == null) return transform.position + transform.forward * 5f;
+
+        CharacterController cc = playerTransform.GetComponent<CharacterController>();
+        if (cc != null)
+        {
+            return cc.bounds.center;
+        }
+
+        Collider col = playerTransform.GetComponentInChildren<Collider>();
+        if (col != null)
+        {
+            return col.bounds.center;
+        }
+
+        return playerTransform.position + Vector3.up * 0.5f;
+    }
+
     protected virtual void Update()
     {
         if (isDead || Time.timeScale == 0f) return;
@@ -84,7 +106,7 @@ public abstract class BaseEnemyAI : TrainingDummy
     /// </summary>
     protected bool HasClearLineOfSight(Vector3 targetPos)
     {
-        Vector3 eyePos = transform.position + Vector3.up * 1.5f;
+        Vector3 eyePos = transform.position + Vector3.up * 0.81f;
         Vector3 dir = targetPos - eyePos;
         float dist = dir.magnitude;
 
@@ -115,11 +137,8 @@ public abstract class BaseEnemyAI : TrainingDummy
     }
 
     /// <summary>
-    /// Roams towards current wanderTarget while avoiding walls.
-    /// </summary>
-    /// <summary>
     /// Computes the exact solid surface beneath the AI and returns the correct center Y position
-    /// (floor height + 1.0m half-height of the 2m capsule). Never hits own colliders or other enemies.
+    /// (floor height + 0.60m to place cylinder feet flat on the ground). Never hits own colliders or other enemies.
     /// </summary>
     protected float GetGroundedY(Vector3 pos)
     {
@@ -135,15 +154,19 @@ public abstract class BaseEnemyAI : TrainingDummy
             if (hit.collider.isTrigger) continue;
             // CRITICAL: Ignore own collider and all child colliders so AI never hits itself!
             if (hit.collider.transform == transform || hit.collider.transform.IsChildOf(transform)) continue;
+            // CRITICAL: Ignore other AI enemies so enemies NEVER stack or float on top of each other!
+            if (hit.collider.GetComponentInParent<TrainingDummy>() != null || hit.collider.GetComponentInParent<BaseEnemyAI>() != null) continue;
+            // CRITICAL: Ignore player
+            if (hit.collider.CompareTag("Player") || hit.collider.GetComponentInParent<PlayerHealth>() != null) continue;
             // Ignore projectiles
-            if (hit.collider.CompareTag("Projectile")) continue;
+            if (hit.collider.GetComponentInParent<EnemyProjectile>() != null || hit.collider.name.Contains("Projectile") || hit.collider.name.Contains("Bullet")) continue;
 
-            // Found solid floor, ramp, or platform surface
-            return hit.point.y + 1.0f;
+            // Found solid floor, ramp, or platform surface (feet sit flat at hit.point.y)
+            return hit.point.y + 0.60f;
         }
 
-        // Default ground floor is at Y = 0.0, so center Y is 1.0f
-        return 1.0f;
+        // Default ground floor is at Y = 0.0, so center Y is 0.60f
+        return 0.60f;
     }
 
     /// <summary>
@@ -154,6 +177,9 @@ public abstract class BaseEnemyAI : TrainingDummy
         if (idleWaitTimer > 0f)
         {
             idleWaitTimer -= Time.deltaTime;
+            // Ambient scan: smoothly scan left and right to look down corridors rather than freezing into a wall
+            float scanOffset = Mathf.Sin(Time.time * 2f) * 20f * Time.deltaTime;
+            transform.Rotate(Vector3.up, scanOffset);
             return;
         }
 
@@ -164,7 +190,7 @@ public abstract class BaseEnemyAI : TrainingDummy
         float distToTarget = moveDir.magnitude;
 
         // If reached target or wandering too long, pick new target and wait briefly
-        if (distToTarget < 1.2f || wanderTimer > 6f)
+        if (distToTarget < 1.0f || wanderTimer > 6f)
         {
             idleWaitTimer = Random.Range(1.0f, 2.5f);
             PickNewWanderTarget();
@@ -173,15 +199,34 @@ public abstract class BaseEnemyAI : TrainingDummy
 
         moveDir.Normalize();
 
-        // Obstacle avoidance: SphereCast forward at waist level
-        Vector3 waistPos = transform.position + Vector3.up * 0.2f;
-        if (Physics.SphereCast(waistPos, 0.4f, transform.forward, out RaycastHit hit, 1.4f))
+        // Obstacle avoidance: SphereCast forward at chest level
+        Vector3 waistPos = transform.position + Vector3.up * 0.1f;
+        if (Physics.SphereCast(waistPos, 0.35f, transform.forward, out RaycastHit hit, 1.2f))
         {
-            if (!hit.collider.isTrigger && hit.collider.transform != transform && !hit.collider.transform.IsChildOf(transform))
+            if (!hit.collider.isTrigger && hit.collider.transform != transform && !hit.collider.transform.IsChildOf(transform)
+                && hit.collider.GetComponentInParent<TrainingDummy>() == null)
             {
-                // Obstacle ahead: pause and choose new direction
-                idleWaitTimer = Random.Range(0.6f, 1.5f);
-                PickNewWanderTarget();
+                // Reflect movement direction off wall normal so the AI NEVER stares at walls!
+                Vector3 awayDir = Vector3.Reflect(transform.forward, hit.normal);
+                awayDir.y = 0f;
+                if (awayDir.sqrMagnitude < 0.01f)
+                {
+                    awayDir = hit.normal;
+                    awayDir.y = 0f;
+                }
+                awayDir.Normalize();
+
+                // Immediately rotate AI into open space away from the wall
+                transform.rotation = Quaternion.LookRotation(awayDir);
+
+                // Set new target along open direction
+                wanderTarget = transform.position + awayDir * Random.Range(4f, 8f);
+                wanderTarget.x = Mathf.Clamp(wanderTarget.x, roomBoundsMin.x * 0.8f, roomBoundsMax.x * 0.8f);
+                wanderTarget.z = Mathf.Clamp(wanderTarget.z, roomBoundsMin.y * 0.8f, roomBoundsMax.y * 0.8f);
+                wanderTarget.y = GetGroundedY(wanderTarget);
+
+                idleWaitTimer = Random.Range(0.4f, 1.0f);
+                wanderTimer = 0f;
                 return;
             }
         }
@@ -200,7 +245,18 @@ public abstract class BaseEnemyAI : TrainingDummy
 
         // Ground / ramp tracking: smoothly move towards floor height (simulates gravity when dropping off ledge)
         float targetY = GetGroundedY(newPos);
-        newPos.y = Mathf.MoveTowards(transform.position.y, targetY, 8f * Time.deltaTime);
+
+        // Step height limit: prevent AI from climbing vertical walls/crates (max step height 0.5m)
+        if (targetY > transform.position.y + 0.5f)
+        {
+            idleWaitTimer = Random.Range(0.5f, 1.2f);
+            PickNewWanderTarget();
+            return;
+        }
+
+        // Fast gravity when falling, smooth rise on ramps
+        float vSpeed = (targetY < transform.position.y) ? 14f : 6f;
+        newPos.y = Mathf.MoveTowards(transform.position.y, targetY, vSpeed * Time.deltaTime);
 
         transform.position = newPos;
     }
@@ -208,10 +264,40 @@ public abstract class BaseEnemyAI : TrainingDummy
     protected void PickNewWanderTarget()
     {
         wanderTimer = 0f;
-        float rx = Random.Range(roomBoundsMin.x * 0.75f, roomBoundsMax.x * 0.75f);
-        float rz = Random.Range(roomBoundsMin.y * 0.75f, roomBoundsMax.y * 0.75f);
-        float targetY = GetGroundedY(new Vector3(rx, transform.position.y, rz));
-        wanderTarget = new Vector3(rx, targetY, rz);
+        // Test open candidate corridors so AI never aims into a wall
+        for (int i = 0; i < 8; i++)
+        {
+            float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+            float dist = Random.Range(4f, 10f);
+            Vector3 testPos = transform.position + new Vector3(Mathf.Sin(angle) * dist, 0f, Mathf.Cos(angle) * dist);
+            testPos.x = Mathf.Clamp(testPos.x, roomBoundsMin.x * 0.8f, roomBoundsMax.x * 0.8f);
+            testPos.z = Mathf.Clamp(testPos.z, roomBoundsMin.y * 0.8f, roomBoundsMax.y * 0.8f);
+
+            Vector3 dir = (testPos - transform.position);
+            dir.y = 0f;
+            float checkDist = dir.magnitude;
+            if (checkDist < 1.2f) continue;
+
+            // Check if there is an open sightline to this candidate target
+            Vector3 checkOrigin = transform.position + Vector3.up * 0.2f;
+            if (!Physics.Raycast(checkOrigin, dir.normalized, checkDist * 0.85f))
+            {
+                float targetY = GetGroundedY(testPos);
+                if (Mathf.Abs(targetY - transform.position.y) < 1.2f)
+                {
+                    wanderTarget = new Vector3(testPos.x, targetY, testPos.z);
+                    return;
+                }
+            }
+        }
+
+        // Fallback: pick a point towards the center of the arena
+        Vector3 centerDir = (Vector3.zero - transform.position);
+        centerDir.y = 0f;
+        Vector3 fallback = transform.position + centerDir.normalized * 5f;
+        fallback.x = Mathf.Clamp(fallback.x, roomBoundsMin.x * 0.75f, roomBoundsMax.x * 0.75f);
+        fallback.z = Mathf.Clamp(fallback.z, roomBoundsMin.y * 0.75f, roomBoundsMax.y * 0.75f);
+        wanderTarget = new Vector3(fallback.x, GetGroundedY(fallback), fallback.z);
     }
 
     protected void RotateTowards(Vector3 targetPos)

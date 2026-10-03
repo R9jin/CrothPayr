@@ -7,7 +7,7 @@ public class TrainingDummy : MonoBehaviour
 {
     [Header("Health Settings")]
     [SerializeField] protected float maxHealth = 100f;
-    [SerializeField] protected float heightOffset = 2.4f;
+    [SerializeField] protected float heightOffset = 1.95f;
 
     protected float currentHealth;
     protected Canvas healthCanvas;
@@ -66,7 +66,7 @@ public class TrainingDummy : MonoBehaviour
         healthCanvas.renderMode = RenderMode.WorldSpace;
 
         RectTransform cRect = canvasGO.GetComponent<RectTransform>();
-        cRect.sizeDelta = new Vector2(2.4f, 0.42f);
+        cRect.sizeDelta = new Vector2(1.5f, 0.28f);
         canvasGO.transform.localScale = Vector3.one;
 
         // ---- Slider Root ----
@@ -143,7 +143,7 @@ public class TrainingDummy : MonoBehaviour
         textGO.transform.SetParent(canvasGO.transform, false);
         titleLabel = textGO.GetComponent<TextMeshProUGUI>();
         titleLabel.text = "TRAINING DUMMY";
-        titleLabel.fontSize = 0.19f;
+        titleLabel.fontSize = 0.16f;
         titleLabel.fontStyle = FontStyles.Bold;
         titleLabel.alignment = TextAlignmentOptions.Center;
         titleLabel.color = Color.white;
@@ -233,6 +233,19 @@ public class TrainingDummy : MonoBehaviour
         {
             GameManager.Instance.RecordDummyKilled();
         }
+
+        DropAmmoOnDeath();
+
         Destroy(gameObject);
+    }
+
+    private void DropAmmoOnDeath()
+    {
+        GameObject ammoPrefab = Resources.Load<GameObject>("AmmoPickup");
+        if (ammoPrefab != null)
+        {
+            Vector3 dropPos = transform.position + Vector3.up * 0.4f;
+            Instantiate(ammoPrefab, dropPos, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
+        }
     }
 }

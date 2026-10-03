@@ -110,7 +110,7 @@ public class VisionConeAI : BaseEnemyAI
     {
         if (playerTransform == null) return false;
 
-        Vector3 eyePos = transform.position + Vector3.up * 1.5f;
+        Vector3 eyePos = transform.position + Vector3.up * 0.81f;
         Vector3 playerPos = playerTransform.position + Vector3.up * 1.0f;
         Vector3 dirToPlayer = playerPos - eyePos;
         float distToPlayer = dirToPlayer.magnitude;
@@ -147,8 +147,12 @@ public class VisionConeAI : BaseEnemyAI
             newPos.x = Mathf.Clamp(newPos.x, roomBoundsMin.x * 0.85f, roomBoundsMax.x * 0.85f);
             newPos.z = Mathf.Clamp(newPos.z, roomBoundsMin.y * 0.85f, roomBoundsMax.y * 0.85f);
             float targetY = GetGroundedY(newPos);
-            newPos.y = Mathf.MoveTowards(transform.position.y, targetY, 12f * Time.deltaTime);
-            transform.position = newPos;
+            if (targetY <= transform.position.y + 0.5f)
+            {
+                float vSpeed = (targetY < transform.position.y) ? 16f : 8f;
+                newPos.y = Mathf.MoveTowards(transform.position.y, targetY, vSpeed * Time.deltaTime);
+                transform.position = newPos;
+            }
         }
         else
         {
@@ -163,9 +167,10 @@ public class VisionConeAI : BaseEnemyAI
 
     private void ExecuteMeleeAttack()
     {
-        if (playerHealth != null)
+        PlayerHealth ph = playerHealth ?? PlayerHealth.Instance ?? Object.FindFirstObjectByType<PlayerHealth>();
+        if (ph != null)
         {
-            playerHealth.TakeDamage(attackDamage, "Vision Cone Rusher AI");
+            ph.TakeDamage(attackDamage, "Vision Cone Rusher AI");
         }
 
         // Visual flash on melee hit
@@ -197,8 +202,12 @@ public class VisionConeAI : BaseEnemyAI
             newPos.x = Mathf.Clamp(newPos.x, roomBoundsMin.x * 0.85f, roomBoundsMax.x * 0.85f);
             newPos.z = Mathf.Clamp(newPos.z, roomBoundsMin.y * 0.85f, roomBoundsMax.y * 0.85f);
             float targetY = GetGroundedY(newPos);
-            newPos.y = Mathf.MoveTowards(transform.position.y, targetY, 10f * Time.deltaTime);
-            transform.position = newPos;
+            if (targetY <= transform.position.y + 0.5f)
+            {
+                float vSpeed = (targetY < transform.position.y) ? 14f : 6f;
+                newPos.y = Mathf.MoveTowards(transform.position.y, targetY, vSpeed * Time.deltaTime);
+                transform.position = newPos;
+            }
         }
     }
 }

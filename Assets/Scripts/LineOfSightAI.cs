@@ -72,7 +72,7 @@ public class LineOfSightAI : BaseEnemyAI
             return;
         }
 
-        Vector3 playerPos = playerTransform.position + Vector3.up * 1.1f;
+        Vector3 playerPos = GetPlayerAimPosition();
         float distToPlayer = Vector3.Distance(transform.position, playerTransform.position);
 
         // "Automatically sees the player when there is a clear view between them."
@@ -107,12 +107,16 @@ public class LineOfSightAI : BaseEnemyAI
             newPos.x = Mathf.Clamp(newPos.x, roomBoundsMin.x * 0.85f, roomBoundsMax.x * 0.85f);
             newPos.z = Mathf.Clamp(newPos.z, roomBoundsMin.y * 0.85f, roomBoundsMax.y * 0.85f);
             float targetY = GetGroundedY(newPos);
-            newPos.y = Mathf.MoveTowards(transform.position.y, targetY, 8f * Time.deltaTime);
-            transform.position = newPos;
+            if (targetY <= transform.position.y + 0.5f)
+            {
+                float vSpeed = (targetY < transform.position.y) ? 14f : 6f;
+                newPos.y = Mathf.MoveTowards(transform.position.y, targetY, vSpeed * Time.deltaTime);
+                transform.position = newPos;
+            }
         }
 
         // Draw laser sight to player
-        Vector3 origin = shootPoint != null ? shootPoint.position : transform.position + Vector3.up * 1.5f;
+        Vector3 origin = shootPoint != null ? shootPoint.position : transform.position + Vector3.up * 0.81f;
         if (laserLine != null)
         {
             laserLine.enabled = true;
@@ -130,8 +134,9 @@ public class LineOfSightAI : BaseEnemyAI
 
     private void FireRangedShot(Vector3 targetPos)
     {
-        Vector3 origin = shootPoint != null ? shootPoint.position : transform.position + Vector3.up * 1.4f;
-        Vector3 shootDir = (targetPos - origin).normalized;
+        Vector3 baseOrigin = shootPoint != null ? shootPoint.position : transform.position + Vector3.up * 0.81f;
+        Vector3 shootDir = (targetPos - baseOrigin).normalized;
+        Vector3 origin = baseOrigin + shootDir * 0.65f;
 
         GameObject projObj;
         if (projectilePrefab != null)

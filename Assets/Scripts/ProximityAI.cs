@@ -127,10 +127,18 @@ public class ProximityAI : BaseEnemyAI
     private void EngageSoundSource()
     {
         Vector3 targetPos = soundTargetPosition;
-        // If the sound source object is still alive, aim at its current position
+        // If the sound source object is still alive, aim at its current center
         if (soundSourceObject != null)
         {
-            targetPos = soundSourceObject.transform.position + Vector3.up * 1.0f;
+            if (soundSourceObject == playerTransform?.gameObject || soundSourceObject.CompareTag("Player"))
+            {
+                targetPos = GetPlayerAimPosition();
+            }
+            else
+            {
+                Collider col = soundSourceObject.GetComponentInChildren<Collider>();
+                targetPos = col != null ? col.bounds.center : soundSourceObject.transform.position + Vector3.up * 0.5f;
+            }
         }
 
         RotateTowards(targetPos);
@@ -146,8 +154,9 @@ public class ProximityAI : BaseEnemyAI
 
     private void FireAcousticRangedShot(Vector3 targetPos)
     {
-        Vector3 origin = shootPoint != null ? shootPoint.position : transform.position + Vector3.up * 1.4f;
-        Vector3 shootDir = (targetPos - origin).normalized;
+        Vector3 baseOrigin = shootPoint != null ? shootPoint.position : transform.position + Vector3.up * 0.81f;
+        Vector3 shootDir = (targetPos - baseOrigin).normalized;
+        Vector3 origin = baseOrigin + shootDir * 0.65f;
 
         GameObject projObj;
         if (projectilePrefab != null)

@@ -141,17 +141,30 @@ public class TrainingDummySpawner : MonoBehaviour
         }
         else
         {
-            // Calculate random spawn position inside room bounds, away from center player spawn
+            // Calculate random spawn position inside room bounds, facing towards center arena
             float x = Random.Range(roomBoundsMin.x * 0.8f, roomBoundsMax.x * 0.8f);
             float z = Random.Range(roomBoundsMin.y * 0.8f, roomBoundsMax.y * 0.8f);
-            spawnPos = new Vector3(x, 1f, z);
-            spawnRot = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+            spawnPos = new Vector3(x, 0.60f, z);
+            Vector3 toCenter = (Vector3.zero - spawnPos);
+            toCenter.y = 0f;
+            spawnRot = Quaternion.LookRotation(toCenter.sqrMagnitude > 0.01f ? toCenter.normalized : Vector3.forward);
         }
 
-        // Snap to floor if platform or ground is beneath
-        if (Physics.Raycast(spawnPos + Vector3.up * 2f, Vector3.down, out RaycastHit groundHit, 6f))
+        // Snap to floor: enemy root center is at floorY + 0.60m so cylinder base sits flat on the floor
+        RaycastHit[] spawnHits = Physics.RaycastAll(new Ray(new Vector3(spawnPos.x, Mathf.Max(spawnPos.y + 2.5f, 6f), spawnPos.z), Vector3.down), 15f);
+        System.Array.Sort(spawnHits, (a, b) => a.distance.CompareTo(b.distance));
+        bool foundSurface = false;
+        foreach (var hit in spawnHits)
         {
-            spawnPos.y = groundHit.point.y + 0.1f;
+            if (hit.collider.isTrigger || hit.collider.GetComponentInParent<EnemyProjectile>() != null || hit.collider.name.Contains("Projectile") || hit.collider.name.Contains("Bullet")) continue;
+            if (hit.collider.CompareTag("Player") || hit.collider.GetComponentInParent<TrainingDummy>() != null || hit.collider.GetComponentInParent<BaseEnemyAI>() != null) continue;
+            spawnPos.y = hit.point.y + 0.60f;
+            foundSurface = true;
+            break;
+        }
+        if (!foundSurface)
+        {
+            spawnPos.y = 0.60f;
         }
 
         GameObject enemyObj = null;

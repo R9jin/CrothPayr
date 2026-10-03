@@ -7,7 +7,7 @@ using UnityEngine.SceneManagement;
 [InitializeOnLoad]
 public static class ValorantLevelBuilder
 {
-    private const string BUILD_KEY = "ValorantLevelsBuilt_v3_URPTexturesFixed";
+    private const string BUILD_KEY = "ValorantLevelsBuilt_v8_FastAmmoSpawnRate";
 
     static ValorantLevelBuilder()
     {
@@ -128,11 +128,11 @@ public static class ValorantLevelBuilder
             playerRot: Quaternion.Euler(0f, 0f, 0f),
             enemyPoints: new[]
             {
-                new Vector3(0f, 1.1f, 4f),      // Site default
-                new Vector3(0f, 3.4f, 11.5f),   // Heaven sniper
-                new Vector3(12.5f, 1.1f, 7f),   // Long sightline
-                new Vector3(-11f, 1.1f, -1f),   // West connector / tree
-                new Vector3(0f, 1.1f, 11.5f),   // Under Heaven (Hell)
+                new TacticalSpawn(new Vector3(0f, 0.60f, 4f), 180f),        // Site default (holding behind site cover, facing South towards A-Main)
+                new TacticalSpawn(new Vector3(0f, 3.175f, 11.5f), 180f),     // Heaven balcony (overlooking site, facing South)
+                new TacticalSpawn(new Vector3(12.5f, 0.60f, 6f), 205f),      // A-Long corridor (holding long peek, facing South-West)
+                new TacticalSpawn(new Vector3(-8.5f, 0.60f, -0.5f), 180f),   // West connector / tree (holding flank, facing South)
+                new TacticalSpawn(new Vector3(0f, 0.60f, 8.5f), 180f),       // Under Heaven / Hell mouth (facing South looking out into site)
             },
             ammoPoints: new[]
             {
@@ -217,12 +217,12 @@ public static class ValorantLevelBuilder
             playerRot: Quaternion.Euler(0f, 0f, 0f),
             enemyPoints: new[]
             {
-                new Vector3(0f, 3.0f, 0f),      // Mid high-ground generator
-                new Vector3(-13f, 1.1f, 11f),   // B-Site default
-                new Vector3(-15.5f, 3.2f, 17f), // Hookah elevated window
-                new Vector3(16f, 1.1f, 2f),     // East elbow choke
-                new Vector3(-14f, 1.1f, -3f),   // B-Main flank
-                new Vector3(0f, 1.1f, 14f),     // Mid back lane
+                new TacticalSpawn(new Vector3(0f, 2.775f, 0f), 180f),       // Mid generator platform (watching South approach)
+                new TacticalSpawn(new Vector3(-13f, 0.60f, 11f), 160f),     // B-Site default (behind cover, holding B-Main choke)
+                new TacticalSpawn(new Vector3(-15.5f, 2.975f, 17f), 170f),  // Hookah elevated window (facing South down the ramp)
+                new TacticalSpawn(new Vector3(14.5f, 0.60f, 2f), 180f),     // East elbow choke (holding corridor, facing South)
+                new TacticalSpawn(new Vector3(-11f, 0.60f, -3f), 150f),     // B-Main flank (watching approach, facing South-East)
+                new TacticalSpawn(new Vector3(0f, 0.60f, 12f), 180f),       // Mid back lane (watching central cross, facing South)
             },
             ammoPoints: new[]
             {
@@ -310,13 +310,13 @@ public static class ValorantLevelBuilder
             playerRot: Quaternion.Euler(0f, 0f, 0f),
             enemyPoints: new[]
             {
-                new Vector3(0f, 1.1f, 0f),       // Center Vault Core
-                new Vector3(-18f, 3.6f, 2f),     // West Heaven Catwalk
-                new Vector3(18f, 3.6f, 2f),      // East Heaven Catwalk
-                new Vector3(0f, 3.8f, 15f),      // North Connecting Bridge
-                new Vector3(0f, 1.1f, 15f),      // Underpass / Sewer tunnel
-                new Vector3(-11f, 1.1f, -10f),   // West flank alley
-                new Vector3(11f, 1.1f, -10f),    // East flank alley
+                new TacticalSpawn(new Vector3(0f, 0.60f, 0f), 180f),        // Center Vault Core (holding entrance, facing South)
+                new TacticalSpawn(new Vector3(-18f, 3.375f, 2f), 150f),     // West Heaven Catwalk (facing South-East over courtyard)
+                new TacticalSpawn(new Vector3(18f, 3.375f, 2f), 210f),      // East Heaven Catwalk (facing South-West over courtyard)
+                new TacticalSpawn(new Vector3(0f, 3.60f, 14f), 180f),       // North Skybridge (facing South looking over underpass)
+                new TacticalSpawn(new Vector3(0f, 0.60f, 11f), 180f),       // Underpass tunnel (facing South guarding underpass)
+                new TacticalSpawn(new Vector3(-11f, 0.60f, -8f), 180f),     // West flank alley (facing South watching the flank)
+                new TacticalSpawn(new Vector3(11f, 0.60f, -8f), 180f),      // East flank alley (facing South watching the flank)
             },
             ammoPoints: new[]
             {
@@ -372,17 +372,20 @@ public static class ValorantLevelBuilder
         GameObject arenaObj = GameObject.Find("Arena");
         if (arenaObj == null) arenaObj = new GameObject("Arena");
 
-        // Find or create Ground
+        // Replace old Ground (Plane primitive) with solid 3D Cube floor slab
         Transform groundTr = arenaObj.transform.Find("Ground");
-        if (groundTr == null)
+        if (groundTr != null)
         {
-            GameObject g = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            g.name = "Ground";
-            g.transform.SetParent(arenaObj.transform, false);
-            groundTr = g.transform;
+            Undo.DestroyObjectImmediate(groundTr.gameObject);
         }
+
+        GameObject g = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        g.name = "Ground";
+        g.transform.SetParent(arenaObj.transform, false);
+        groundTr = g.transform;
+        // Floor slab center is Y = -0.5, height is 1.0 -> Top surface is EXACTLY at Y = 0.0f!
         groundTr.localPosition = new Vector3(0f, -0.5f, 0f);
-        groundTr.localScale = new Vector3(roomSize, 1f, roomSize);
+        groundTr.localScale = new Vector3(roomSize + 4f, 1f, roomSize + 4f);
         groundTr.localRotation = Quaternion.identity;
 
         MeshRenderer groundMr = groundTr.GetComponent<MeshRenderer>();
@@ -390,6 +393,7 @@ public static class ValorantLevelBuilder
 
         BoxCollider groundBc = groundTr.GetComponent<BoxCollider>();
         if (groundBc == null) groundBc = groundTr.gameObject.AddComponent<BoxCollider>();
+        groundBc.center = Vector3.zero;
         groundBc.size = Vector3.one;
 
         // Find or create Walls
@@ -508,7 +512,18 @@ public static class ValorantLevelBuilder
         return ramp;
     }
 
-    private static void SetupSpawnPoints(Transform arenaTr, Vector3 playerPos, Quaternion playerRot, Vector3[] enemyPoints, Vector3[] ammoPoints)
+    public struct TacticalSpawn
+    {
+        public Vector3 position;
+        public float yaw;
+        public TacticalSpawn(Vector3 pos, float facingYaw)
+        {
+            position = pos;
+            yaw = facingYaw;
+        }
+    }
+
+    private static void SetupSpawnPoints(Transform arenaTr, Vector3 playerPos, Quaternion playerRot, TacticalSpawn[] enemyPoints, Vector3[] ammoPoints)
     {
         Transform spawnPointsTr = arenaTr.Find("SpawnPoints");
         if (spawnPointsTr == null)
@@ -529,13 +544,13 @@ public static class ValorantLevelBuilder
         playerSpawn.transform.position = playerPos;
         playerSpawn.transform.rotation = playerRot;
 
-        // 2. Tactical Enemy Spawn Points
+        // 2. Tactical Enemy Spawn Points (deliberate sightlines, never looking into a wall!)
         for (int i = 0; i < enemyPoints.Length; i++)
         {
             GameObject esp = new GameObject($"EnemySpawnPoint_{i + 1}");
             esp.transform.SetParent(spawnPointsTr, false);
-            esp.transform.position = enemyPoints[i];
-            esp.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+            esp.transform.position = enemyPoints[i].position;
+            esp.transform.rotation = Quaternion.Euler(0f, enemyPoints[i].yaw, 0f);
         }
 
         // 3. Ammo Spawn Points
@@ -556,11 +571,26 @@ public static class ValorantLevelBuilder
             player.transform.rotation = playerRot;
             if (cc != null) cc.enabled = true;
 
-            // Remove obsolete prototype capsule MeshRenderer and MeshFilter from root Player
+            // Remove obsolete prototype capsule MeshRenderer, MeshFilter, and legacy CapsuleCollider
             MeshRenderer mr = player.GetComponent<MeshRenderer>();
             if (mr != null) Undo.DestroyObjectImmediate(mr);
             MeshFilter mf = player.GetComponent<MeshFilter>();
             if (mf != null) Undo.DestroyObjectImmediate(mf);
+            CapsuleCollider ccLegacy = player.GetComponent<CapsuleCollider>();
+            if (ccLegacy != null) Undo.DestroyObjectImmediate(ccLegacy);
+
+            // Ensure PlayerHealth component is attached
+            if (player.GetComponent<PlayerHealth>() == null)
+            {
+                Undo.AddComponent<PlayerHealth>(player);
+            }
+
+            // Tag player and all its children with Player tag
+            player.tag = "Player";
+            foreach (Transform c in player.GetComponentsInChildren<Transform>(true))
+            {
+                c.gameObject.tag = "Player";
+            }
         }
     }
 
@@ -577,6 +607,14 @@ public static class ValorantLevelBuilder
         if (ammoSpawner != null)
         {
             ammoSpawner.SetBounds(boundsMin, boundsMax);
+            SerializedObject so = new SerializedObject(ammoSpawner);
+            var spInterval = so.FindProperty("spawnInterval");
+            if (spInterval != null) spInterval.floatValue = 6f;
+            var spMax = so.FindProperty("maxActiveAmmo");
+            if (spMax != null) spMax.intValue = 4;
+            var spInit = so.FindProperty("initialSpawnCount");
+            if (spInit != null) spInit.intValue = 2;
+            so.ApplyModifiedProperties();
             EditorUtility.SetDirty(ammoSpawner);
         }
     }

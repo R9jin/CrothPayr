@@ -3,14 +3,8 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-[InitializeOnLoad]
 public static class GameAIValidation
 {
-    static GameAIValidation()
-    {
-        RunAllTests();
-    }
-
     [MenuItem("Tools/Run Game AI Validation")]
     public static void RunAllTests()
     {
