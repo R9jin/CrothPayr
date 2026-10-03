@@ -109,10 +109,26 @@ public class PlayerShooting : MonoBehaviour
 
     private void HandleFiring()
     {
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (GameManager.Instance != null && !GameManager.Instance.HasAmmo())
+            {
+                if (UIManager.Instance != null)
+                {
+                    UIManager.Instance.FlashEmptyAmmo();
+                }
+            }
+        }
+
         if (Input.GetMouseButton(0) && Time.time >= nextFireTime) // left click held
         {
             if (GameManager.Instance != null && !GameManager.Instance.HasAmmo())
             {
+                if (UIManager.Instance != null)
+                {
+                    UIManager.Instance.FlashEmptyAmmo();
+                }
+                nextFireTime = Time.time + 0.25f;
                 return;
             }
 

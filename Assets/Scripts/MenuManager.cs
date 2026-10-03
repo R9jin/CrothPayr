@@ -88,16 +88,22 @@ public class MenuManager : MonoBehaviour
         }
     }
 
+    [Header("Credits / Student Info")]
+    [SerializeField] private GameObject namesText;
+
     public void OpenCharacterSelect()
     {
+        if (namesText == null) namesText = GameObject.Find("NamesText");
         if (characterSelectPanel != null) characterSelectPanel.SetActive(true);
         if (mainButtonsPanel != null) mainButtonsPanel.SetActive(false);
+        if (namesText != null) namesText.SetActive(false);
     }
 
     public void CloseCharacterSelect()
     {
         if (characterSelectPanel != null) characterSelectPanel.SetActive(false);
         if (mainButtonsPanel != null) mainButtonsPanel.SetActive(true);
+        if (namesText != null) namesText.SetActive(true);
     }
 
     public void SelectCharacter(int characterIndex)

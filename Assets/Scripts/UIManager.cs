@@ -16,6 +16,11 @@ public class UIManager : MonoBehaviour
     [Header("Ammo HUD (UPDATESPRITES_3)")]
     [SerializeField] private Image ammoIconImage;
     [SerializeField] private TMP_Text ammoCountText;
+    [SerializeField] private RectTransform ammoHUDPanel;
+    [SerializeField] private TMP_Text ammoLabelText;
+    [SerializeField] private Slider ammoSlider;
+    [SerializeField] private Image ammoSliderFill;
+    private Coroutine flashEmptyAmmoCoroutine;
 
     [Header("Player Health Bar HUD")]
     [SerializeField] private Slider playerHealthSlider;
@@ -74,8 +79,9 @@ public class UIManager : MonoBehaviour
             }
         }
 
-        // Build Player Health UI if not already wired
+        // Build Player Health & Ammo UI if not already wired
         EnsurePlayerHealthUI();
+        EnsureAmmoHUD();
     }
 
     private void EnsurePlayerHealthUI()
@@ -115,15 +121,25 @@ public class UIManager : MonoBehaviour
         }
 
         // ---- Player Health Bar Container ----
-        GameObject barRoot = new GameObject("PlayerHealthBar", typeof(RectTransform));
-        barRoot.transform.SetParent(rootCanvas.transform, false);
+        Transform existingBar = rootCanvas.transform.Find("PlayerHealthBar");
+        GameObject barRoot;
+        if (existingBar != null)
+        {
+            barRoot = existingBar.gameObject;
+        }
+        else
+        {
+            barRoot = new GameObject("PlayerHealthBar", typeof(RectTransform));
+            barRoot.transform.SetParent(rootCanvas.transform, false);
+        }
+
         RectTransform rootRect = barRoot.GetComponent<RectTransform>();
-        // Anchor to bottom-left (above ammo counter)
+        // Anchor to bottom-left (neatly stacked above SkillHUD)
         rootRect.anchorMin = new Vector2(0f, 0f);
         rootRect.anchorMax = new Vector2(0f, 0f);
         rootRect.pivot = new Vector2(0f, 0f);
-        rootRect.anchoredPosition = new Vector2(30f, 95f);
-        rootRect.sizeDelta = new Vector2(240f, 28f);
+        rootRect.anchoredPosition = new Vector2(20f, 98f);
+        rootRect.sizeDelta = new Vector2(320f, 28f);
 
         // Frame / Background
         GameObject bgGO = new GameObject("Background", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
@@ -241,18 +257,341 @@ public class UIManager : MonoBehaviour
         damageVignetteImage.color = new Color(0.9f, 0f, 0f, 0f);
     }
 
-    public void UpdateAmmoText(int current, int max)
+    public void EnsureAmmoHUD()
     {
-        if (ammoCountText != null)
+        if (ammoHUDPanel != null && ammoCountText != null) return;
+
+        Canvas rootCanvas = GetComponentInChildren<Canvas>();
+        if (rootCanvas == null)
         {
-            ammoCountText.text = $"x {current}";
-            ammoCountText.color = (current <= 5) ? new Color(1f, 0.25f, 0.25f) : Color.white;
+            Canvas[] allCanvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+            foreach (var c in allCanvases)
+            {
+                if (c.renderMode == RenderMode.ScreenSpaceOverlay || c.name.Contains("Canvas") || c.name.Contains("HUD"))
+                {
+                    rootCanvas = c;
+                    break;
+                }
+            }
+        }
+
+        if (rootCanvas == null) return;
+
+        // Check if AmmoHUD already exists in Canvas
+        Transform existingHUD = rootCanvas.transform.Find("AmmoHUD");
+        GameObject hudGO;
+        if (existingHUD != null)
+        {
+            hudGO = existingHUD.gameObject;
+        }
+        else
+        {
+            hudGO = new GameObject("AmmoHUD", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            hudGO.transform.SetParent(rootCanvas.transform, false);
+            hudGO.transform.SetAsLastSibling();
+        }
+
+        ammoHUDPanel = hudGO.GetComponent<RectTransform>();
+        ammoHUDPanel.anchorMin = new Vector2(1f, 0f);
+        ammoHUDPanel.anchorMax = new Vector2(1f, 0f);
+        ammoHUDPanel.pivot = new Vector2(1f, 0f);
+        ammoHUDPanel.anchoredPosition = new Vector2(-24f, 20f);
+        ammoHUDPanel.sizeDelta = new Vector2(260f, 85f);
+
+        Image panelBg = hudGO.GetComponent<Image>();
+        if (panelBg != null)
+        {
+            panelBg.color = new Color(0.06f, 0.09f, 0.14f, 0.92f);
+            panelBg.raycastTarget = false;
+        }
+
+        // Top accent line
+        Transform accentTr = ammoHUDPanel.Find("AccentLine");
+        if (accentTr == null)
+        {
+            GameObject accentGO = new GameObject("AccentLine", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            accentGO.transform.SetParent(ammoHUDPanel, false);
+            RectTransform accentRect = accentGO.GetComponent<RectTransform>();
+            accentRect.anchorMin = new Vector2(0f, 1f);
+            accentRect.anchorMax = new Vector2(1f, 1f);
+            accentRect.pivot = new Vector2(0.5f, 1f);
+            accentRect.anchoredPosition = Vector2.zero;
+            accentRect.sizeDelta = new Vector2(0f, 2.5f);
+            Image accentImg = accentGO.GetComponent<Image>();
+            accentImg.color = new Color(0.24f, 0.65f, 1f, 0.95f);
+            accentImg.raycastTarget = false;
+        }
+
+        // Ammo Icon
+        if (ammoIconImage == null)
+        {
+            Transform existingIcon = rootCanvas.transform.Find("AmmoIcon");
+            if (existingIcon != null)
+            {
+                ammoIconImage = existingIcon.GetComponent<Image>();
+            }
         }
 
         if (ammoIconImage != null)
         {
-            ammoIconImage.color = (current <= 5) ? new Color(1f, 0.35f, 0.35f) : Color.white;
+            ammoIconImage.transform.SetParent(ammoHUDPanel, false);
+            RectTransform iconRect = ammoIconImage.GetComponent<RectTransform>();
+            iconRect.anchorMin = new Vector2(0f, 0.5f);
+            iconRect.anchorMax = new Vector2(0f, 0.5f);
+            iconRect.pivot = new Vector2(0f, 0.5f);
+            iconRect.anchoredPosition = new Vector2(14f, 2f);
+            iconRect.sizeDelta = new Vector2(44f, 44f);
+            ammoIconImage.preserveAspect = true;
+            ammoIconImage.raycastTarget = false;
         }
+        else
+        {
+            GameObject iconGO = new GameObject("AmmoIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            iconGO.transform.SetParent(ammoHUDPanel, false);
+            RectTransform iconRect = iconGO.GetComponent<RectTransform>();
+            iconRect.anchorMin = new Vector2(0f, 0.5f);
+            iconRect.anchorMax = new Vector2(0f, 0.5f);
+            iconRect.pivot = new Vector2(0f, 0.5f);
+            iconRect.anchoredPosition = new Vector2(14f, 2f);
+            iconRect.sizeDelta = new Vector2(44f, 44f);
+            ammoIconImage = iconGO.GetComponent<Image>();
+            ammoIconImage.preserveAspect = true;
+            ammoIconImage.raycastTarget = false;
+        }
+
+        // Load sprite if missing
+        if (ammoIconImage.sprite == null)
+        {
+            Sprite[] sprites = Resources.LoadAll<Sprite>("UPDATEDSPRITES");
+            if (sprites != null)
+            {
+                foreach (var s in sprites)
+                {
+                    if (s.name == "UPDATESPRITES_3")
+                    {
+                        ammoIconImage.sprite = s;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Find or build ammoCountText
+        if (ammoCountText == null)
+        {
+            Transform existingCount = rootCanvas.transform.Find("AmmoCount");
+            if (existingCount != null)
+            {
+                ammoCountText = existingCount.GetComponent<TextMeshProUGUI>();
+            }
+        }
+
+        TMP_FontAsset sharedFont = null;
+        if (ammoCountText != null)
+        {
+            sharedFont = ammoCountText.font;
+            ammoCountText.transform.SetParent(ammoHUDPanel, false);
+            RectTransform countRect = ammoCountText.GetComponent<RectTransform>();
+            countRect.anchorMin = new Vector2(0f, 0.5f);
+            countRect.anchorMax = new Vector2(1f, 0.5f);
+            countRect.pivot = new Vector2(0f, 0.5f);
+            countRect.anchoredPosition = new Vector2(68f, -2f);
+            countRect.sizeDelta = new Vector2(-76f, 40f);
+            ammoCountText.alignment = TextAlignmentOptions.MidlineLeft;
+            ammoCountText.enableWordWrapping = false;
+            ammoCountText.richText = true;
+            ammoCountText.raycastTarget = false;
+        }
+        else
+        {
+            GameObject countGO = new GameObject("AmmoCount", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+            countGO.transform.SetParent(ammoHUDPanel, false);
+            RectTransform countRect = countGO.GetComponent<RectTransform>();
+            countRect.anchorMin = new Vector2(0f, 0.5f);
+            countRect.anchorMax = new Vector2(1f, 0.5f);
+            countRect.pivot = new Vector2(0f, 0.5f);
+            countRect.anchoredPosition = new Vector2(68f, -2f);
+            countRect.sizeDelta = new Vector2(-76f, 40f);
+            ammoCountText = countGO.GetComponent<TextMeshProUGUI>();
+            ammoCountText.alignment = TextAlignmentOptions.MidlineLeft;
+            ammoCountText.enableWordWrapping = false;
+            ammoCountText.richText = true;
+            ammoCountText.raycastTarget = false;
+        }
+
+        // Header label: "AMMUNITION"
+        Transform labelTr = ammoHUDPanel.Find("AmmoHeader");
+        if (labelTr == null)
+        {
+            GameObject labelGO = new GameObject("AmmoHeader", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+            labelGO.transform.SetParent(ammoHUDPanel, false);
+            RectTransform lRect = labelGO.GetComponent<RectTransform>();
+            lRect.anchorMin = new Vector2(0f, 1f);
+            lRect.anchorMax = new Vector2(1f, 1f);
+            lRect.pivot = new Vector2(0f, 1f);
+            lRect.anchoredPosition = new Vector2(68f, -9f);
+            lRect.sizeDelta = new Vector2(-76f, 18f);
+
+            ammoLabelText = labelGO.GetComponent<TextMeshProUGUI>();
+            if (sharedFont != null) ammoLabelText.font = sharedFont;
+            ammoLabelText.text = "AMMUNITION";
+            ammoLabelText.fontSize = 11f;
+            ammoLabelText.fontStyle = FontStyles.Bold;
+            ammoLabelText.color = new Color(0.6f, 0.72f, 0.85f, 0.9f);
+            ammoLabelText.alignment = TextAlignmentOptions.Left;
+            ammoLabelText.raycastTarget = false;
+        }
+        else
+        {
+            ammoLabelText = labelTr.GetComponent<TextMeshProUGUI>();
+        }
+
+        // Sleek ammo progress bar at bottom of AmmoHUD
+        Transform barTr = ammoHUDPanel.Find("AmmoProgressBar");
+        if (barTr == null)
+        {
+            GameObject barGO = new GameObject("AmmoProgressBar", typeof(RectTransform));
+            barGO.transform.SetParent(ammoHUDPanel, false);
+            RectTransform barRect = barGO.GetComponent<RectTransform>();
+            barRect.anchorMin = new Vector2(0f, 0f);
+            barRect.anchorMax = new Vector2(1f, 0f);
+            barRect.pivot = new Vector2(0.5f, 0f);
+            barRect.anchoredPosition = new Vector2(0f, 6f);
+            barRect.sizeDelta = new Vector2(-24f, 5f);
+
+            // Bar background
+            GameObject barBgGO = new GameObject("Background", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            barBgGO.transform.SetParent(barGO.transform, false);
+            RectTransform bbgRect = barBgGO.GetComponent<RectTransform>();
+            bbgRect.anchorMin = Vector2.zero;
+            bbgRect.anchorMax = Vector2.one;
+            bbgRect.offsetMin = Vector2.zero;
+            bbgRect.offsetMax = Vector2.zero;
+            Image bbgImg = barBgGO.GetComponent<Image>();
+            bbgImg.color = new Color(0.12f, 0.16f, 0.22f, 0.9f);
+            bbgImg.raycastTarget = false;
+
+            // Slider
+            ammoSlider = barGO.AddComponent<Slider>();
+            ammoSlider.interactable = false;
+            ammoSlider.transition = Selectable.Transition.None;
+            ammoSlider.minValue = 0f;
+            ammoSlider.maxValue = 30f;
+            ammoSlider.value = 30f;
+
+            // Fill Area
+            GameObject faGO = new GameObject("Fill Area", typeof(RectTransform));
+            faGO.transform.SetParent(barGO.transform, false);
+            RectTransform faRect = faGO.GetComponent<RectTransform>();
+            faRect.anchorMin = Vector2.zero;
+            faRect.anchorMax = Vector2.one;
+            faRect.offsetMin = Vector2.zero;
+            faRect.offsetMax = Vector2.zero;
+
+            // Fill
+            GameObject fillGO = new GameObject("Fill", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            fillGO.transform.SetParent(faGO.transform, false);
+            RectTransform fillRect = fillGO.GetComponent<RectTransform>();
+            fillRect.anchorMin = Vector2.zero;
+            fillRect.anchorMax = Vector2.one;
+            fillRect.offsetMin = Vector2.zero;
+            fillRect.offsetMax = Vector2.zero;
+            ammoSliderFill = fillGO.GetComponent<Image>();
+            ammoSliderFill.color = new Color(0.24f, 0.75f, 1f, 1f);
+            ammoSliderFill.raycastTarget = false;
+
+            ammoSlider.fillRect = fillRect;
+        }
+        else
+        {
+            ammoSlider = barTr.GetComponent<Slider>();
+            Transform fTr = barTr.Find("Fill Area/Fill");
+            if (fTr != null)
+                ammoSliderFill = fTr.GetComponent<Image>();
+        }
+    }
+
+    public void UpdateAmmoText(int current, int max)
+    {
+        EnsureAmmoHUD();
+
+        if (ammoSlider != null)
+        {
+            ammoSlider.maxValue = max;
+            ammoSlider.value = current;
+        }
+
+        if (ammoSliderFill != null)
+        {
+            if (current <= 0)
+                ammoSliderFill.color = new Color(1f, 0.15f, 0.15f, 0.9f);
+            else if (current <= 5)
+                ammoSliderFill.color = new Color(1f, 0.55f, 0.15f, 1f);
+            else
+                ammoSliderFill.color = new Color(0.24f, 0.75f, 1f, 1f);
+        }
+
+        if (ammoCountText != null)
+        {
+            if (current <= 0)
+            {
+                ammoCountText.text = $"<size=34><b><color=#FF3333>0</color></b></size> <size=18><color=#8899AA>/ {max}</color></size>  <size=12><color=#FF4444>[EMPTY]</color></size>";
+            }
+            else if (current <= 5)
+            {
+                ammoCountText.text = $"<size=34><b><color=#FFAA33>{current}</color></b></size> <size=18><color=#88A0B8>/ {max}</color></size>  <size=12><color=#FFAA33>[LOW]</color></size>";
+            }
+            else
+            {
+                ammoCountText.text = $"<size=34><b><color=#FFFFFF>{current}</color></b></size> <size=18><color=#88A0B8>/ {max}</color></size>";
+            }
+        }
+
+        if (ammoIconImage != null)
+        {
+            if (current <= 0)
+                ammoIconImage.color = new Color(1f, 0.25f, 0.25f, 1f);
+            else if (current <= 5)
+                ammoIconImage.color = new Color(1f, 0.7f, 0.25f, 1f);
+            else
+                ammoIconImage.color = Color.white;
+        }
+
+        if (ammoLabelText != null)
+        {
+            if (current <= 0)
+                ammoLabelText.text = "<color=#FF4444>NO AMMO - COLLECT CRATE</color>";
+            else if (current <= 5)
+                ammoLabelText.text = "<color=#FFAA33>LOW AMMO WARNING</color>";
+            else
+                ammoLabelText.text = "AMMUNITION";
+        }
+    }
+
+    public void FlashEmptyAmmo()
+    {
+        EnsureAmmoHUD();
+        if (ammoHUDPanel == null) return;
+        if (flashEmptyAmmoCoroutine != null) StopCoroutine(flashEmptyAmmoCoroutine);
+        flashEmptyAmmoCoroutine = StartCoroutine(FlashEmptyAmmoRoutine());
+    }
+
+    private IEnumerator FlashEmptyAmmoRoutine()
+    {
+        Image bg = ammoHUDPanel.GetComponent<Image>();
+        if (bg == null) yield break;
+
+        Color original = new Color(0.06f, 0.09f, 0.14f, 0.92f);
+        Color flashColor = new Color(0.6f, 0.08f, 0.08f, 0.95f);
+
+        for (int i = 0; i < 2; i++)
+        {
+            bg.color = flashColor;
+            yield return new WaitForSecondsRealtime(0.08f);
+            bg.color = original;
+            yield return new WaitForSecondsRealtime(0.08f);
+        }
+        bg.color = original;
     }
 
     public void UpdateTimerText(float time)

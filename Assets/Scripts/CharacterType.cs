@@ -69,11 +69,11 @@ public static class CharacterSelection
         switch (type)
         {
             case CharacterType.CharacterA_Roll:
-                return "Rapid evasive roll in movement direction.\nHas 2 charges with recharge cooldown.\n[Key: Q]";
+                return "Rapid evasive roll in movement direction. Has 2 charges with recharge cooldown. [Key: Q]";
             case CharacterType.CharacterB_DoubleJump:
-                return "Allows a second vertical leap while in mid-air.\nNo cooldown.\n[Key: Space in air]";
+                return "Allows a second vertical leap while in mid-air. Passive ability with no cooldown. [Key: Space in air]";
             case CharacterType.CharacterC_Teleport:
-                return "Instantly teleports forward a short distance safely.\nHas a cooldown.\n[Key: Q or E]";
+                return "Instantly teleports forward a short distance safely. Tactical ability with cooldown. [Key: Q or E]";
             default:
                 return "";
         }
